@@ -33,6 +33,7 @@ This is a Raspberry Pi based Access Control System for 2 Wire Digital Intercoms
 <!-- 1. Create and configure an .env file with an `ACCESS_TOKEN` -->
 
 ## Connections
+For a Raspberry Pi 4 B:
 
 - GPIO 16: Relay switch
 - GPIO 26: LED observer
