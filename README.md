@@ -8,7 +8,7 @@ This is a Raspberry Pi based Access Control System for 2 Wire Digital Intercoms
 - Your own MongoDB Atlas account for the API DB
 
 ## How it works
-1. You should have an API running with an endpoint with all the dates the intercom should open (like this one)
+1. You should have an API running with an endpoint with all the dates the intercom should open (like [this one](#))
 1. When the intercom recieves a call, the LED will switch off, and the Raspberry will detect somebody is calling 
 1. When someone calls, the program saves the date of the call into the database and check if theres any register in the DB for today
     - if so: will activate the relay for opening the door
