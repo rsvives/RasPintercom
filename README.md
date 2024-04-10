@@ -29,8 +29,8 @@ This is a Raspberry Pi based Access Control System for 2 Wire Digital Intercoms
 1. Connect the wires
 1. Power up the Raspi (with an already installed OS)
 1. SSH into the Raspi and clone this repository
-<!-- 1. Create and configure an .env file with an `ACCESS_TOKEN` -->
 1. Open the folder an run `python3 intercom.py`
+<!-- 1. Create and configure an .env file with an `ACCESS_TOKEN` -->
 
 ## Connections
 
