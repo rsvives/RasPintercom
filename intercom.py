@@ -71,7 +71,10 @@ def save_log():
     logger.info("🔔 Llamada efectuada")
 
 def check_booking():
-    response = requests.get(API_URL+'/guests/today')
+    headersAuth = {
+    'Authorization': 'Bearer '+ str(config['API_AUTH_TOKEN']),
+}
+    response = requests.get(API_URL+'/guests/today',headers=headersAuth)
     data = response.json()
     print(data)
     
