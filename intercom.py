@@ -1,7 +1,17 @@
 #!/usr/bin/env python3          
-import os
+# import os
+import datetime
+import os.path
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+
+#------
+
 import time
-from dotenv import load_dotenv 
 import requests                   
 import signal                   
 import sys
@@ -11,15 +21,20 @@ import telepot
 from dotenv import dotenv_values
 config = dotenv_values(".env")
 
+SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+creds = None
 
 OPEN_BUTTON_GPIO = 16
-LED_INTERCOM_GPIO = 26
+LED_INTERCOM_GPIO = 6
 API_URL = config['API_URL']
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='calls.log', 
                     level=logging.INFO,
                     encoding='utf-8',
                     format='[%(levelname)s] %(asctime)s: %(message)s')
+headersAuth = {
+    'Authorization': 'Bearer '+ str(config['API_AUTH_TOKEN']),
+}
 
 def botListening(msg):
 
@@ -28,8 +43,12 @@ def botListening(msg):
         if(msg['text']=="/open"):
             open_door()
             
-        if(msg['text']=="/guests"):
+        if(msg['text']=="/new_guest"):
             telegram_message("🤷🏻‍♂️ not yet implemented")
+
+        if(msg['text']=="/upcoming_guests"):
+            # telegram_message("🤷🏻‍♂️ not yet implemented")
+            check_booking()
             
         if(msg['text']=="/logs"):
             data=""
@@ -39,7 +58,8 @@ def botListening(msg):
                 data += l
             telegram_message("✅ Registro completo:\n"+data)
 
-        if(msg['text']=="/calls"):
+        if(msg['text']=="/calls"): 
+   
             response = requests.get(API_URL+'/calls')
             data = response.json()
             print (data)
@@ -66,25 +86,59 @@ def telegram_message(message):
 
 def save_log():
     data={'user': config['USER_ID']}
-    requests.post(API_URL+'/calls',json=data)
+    requests.post(API_URL+'/calls',json=data, headers=headersAuth)
     print("📝 Guardando llamada en el registro")
     logger.info("🔔 Llamada efectuada")
 
+
 def check_booking():
-    headersAuth = {
-    'Authorization': 'Bearer '+ str(config['API_AUTH_TOKEN']),
-}
-    response = requests.get(API_URL+'/guests/today',headers=headersAuth)
-    data = response.json()
-    print(data)
+
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json", SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+
+        # Save the credentials for the next run
+        with open("token.json", "w") as token:
+            token.write(creds.to_json())
     
-    if len(data['guests'])>0:
+    try:
+        service = build("calendar", "v3", credentials=creds)
+        # Call the Calendar API
+        now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
+        events_result = (
+            service.events()
+            .list(
+                calendarId="5797a4540d40657212fb1b300dd134c9231d8feb30ae8724760267c39171435c@group.calendar.google.com",
+                timeMax=now,
+                maxResults=1,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
+        events = events_result.get("items")
+
+        if not events:
+            print('🚫 No esperamos a nadie ahora')  
+            return
+        
+        event, *_ = events
+        print(f"{event['description']} - {event['summary']}: {event.get('start').get('dateTime')} -> {event.get('end').get('dateTime')}")
         open_door()
-    else:
-        print('🚫 No esperamos a nadie')    
+
+    except HttpError as error:
+        print(f"Error: {error}")
 
 def open_door():
-    time.sleep(2)
+    # time.sleep(1)
     print('🔓 Abriendo puerta')
     GPIO.output( OPEN_BUTTON_GPIO , GPIO.HIGH )
     time.sleep(1)
@@ -93,6 +147,7 @@ def open_door():
     telegram_message("🔓 Puerta abierta")
 
 def button_callback(channel):
+    # print(GPIO.input(LED_INTERCOM_GPIO))
     if GPIO.input(LED_INTERCOM_GPIO):
         print("🔔 Han llamado!")
         telegram_message("🔔 Han llamado al portero automático!")
@@ -103,13 +158,15 @@ def button_callback(channel):
 
 if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(LED_INTERCOM_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    GPIO.setup(OPEN_BUTTON_GPIO, GPIO.OUT,initial=0)
+    GPIO.setup(LED_INTERCOM_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(OPEN_BUTTON_GPIO, GPIO.OUT, initial=0)
+    creds = None
+
+
+
     
     GPIO.add_event_detect(LED_INTERCOM_GPIO, GPIO.BOTH, 
             callback=button_callback, bouncetime=100)
-    
-    # telegram_message("test")
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()
