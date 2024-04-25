@@ -1,6 +1,6 @@
 #!/usr/bin/env python3          
 # import os
-import datetime
+from datetime import datetime, timedelta
 import os.path
 
 from google.auth.transport.requests import Request
@@ -22,6 +22,8 @@ from dotenv import dotenv_values
 config = dotenv_values(".env")
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+CALENDAR_ID="5797a4540d40657212fb1b300dd134c9231d8feb30ae8724760267c39171435c@group.calendar.google.com"
+NOW = datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
 creds = None
 
 OPEN_BUTTON_GPIO = 16
@@ -47,8 +49,20 @@ def botListening(msg):
             telegram_message("🤷🏻‍♂️ not yet implemented")
 
         if(msg['text']=="/upcoming_guests"):
-            # telegram_message("🤷🏻‍♂️ not yet implemented")
-            check_booking()
+
+            nextMonth = (datetime.now() + timedelta(days=7)).isoformat() + "Z"
+            guests = check_guests(timeMin=NOW,timeMax=nextMonth,maxResults=20)
+            if not guests:
+                print('🚫 No esperamos a nadie ahora')  
+                return
+            
+            message=""
+            for guest in guests:
+                data = (f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
+                print(data)
+                message+=data+"\n\n"
+
+            telegram_message("📅 Próximos invitados:\n\n"+message)    
             
         if(msg['text']=="/logs"):
             data=""
@@ -104,6 +118,17 @@ def save_log():
 
 
 def check_booking():
+    
+    guests = check_guests(timeMin=None,timeMax=NOW,maxResults=1)
+    if not guests:
+        print('🚫 No esperamos a nadie ahora')  
+        return
+        
+    guest, *_ = guests
+    print(f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
+    open_door()
+    
+def check_guests(timeMin, timeMax, maxResults):
 
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
@@ -124,13 +149,14 @@ def check_booking():
     try:
         service = build("calendar", "v3", credentials=creds)
         # Call the Calendar API
-        now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
+        
         events_result = (
             service.events()
             .list(
-                calendarId="5797a4540d40657212fb1b300dd134c9231d8feb30ae8724760267c39171435c@group.calendar.google.com",
-                timeMax=now,
-                maxResults=1,
+                calendarId=CALENDAR_ID,
+                timeMin=timeMin,
+                timeMax=timeMax,
+                maxResults=maxResults,
                 singleEvents=True,
                 orderBy="startTime",
             )
@@ -138,13 +164,7 @@ def check_booking():
         )
         events = events_result.get("items")
 
-        if not events:
-            print('🚫 No esperamos a nadie ahora')  
-            return
-        
-        event, *_ = events
-        print(f"{event['description']} - {event['summary']}: {event.get('start').get('dateTime')} -> {event.get('end').get('dateTime')}")
-        open_door()
+        return events
 
     except HttpError as error:
         print(f"Error: {error}")
