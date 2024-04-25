@@ -56,7 +56,13 @@ def botListening(msg):
                 lines = file.readlines()
             for l in lines:
                 data += l
-            telegram_message("✅ Registro completo:\n"+data)
+            
+            try:
+                telegram_message("✅ Registro completo:\n"+data)
+            except :
+                telegram_message("😣 Algo no ha salido como debía...")
+                print("❌ Error enviando registro")
+                
 
         if(msg['text']=="/calls"): 
    
@@ -67,7 +73,12 @@ def botListening(msg):
             for d in data['calls']:
                 registro+= d['date']+"\n"
             print(registro)
-            telegram_message("🔔 Registro de llamadas:\n"+ registro)
+
+            try:
+                telegram_message("🔔 Registro de llamadas:\n"+ registro)
+            except :
+                telegram_message("😣 Algo no ha salido como debía...")
+                print("❌ Error enviando registro")
 
 
 TG_TOKEN=config['TG_TOKEN']
