@@ -57,6 +57,7 @@ def botListening(msg):
                 return
             
             message=""
+            print("📅 Próximos invitados:")
             for guest in guests:
                 data = (f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
                 print(data)
