@@ -75,13 +75,14 @@ TG_CHAT_ID=config['TG_CHAT_ID']
 TG_BOT = telepot.Bot(TG_TOKEN)
 TG_BOT.message_loop(botListening)
 
+
 def signal_handler(sig, frame):
     GPIO.cleanup()
     sys.exit(0)
 
+
 def telegram_message(message):
     TG_BOT.sendMessage(TG_CHAT_ID,message)
-
 
 
 def save_log():
@@ -160,10 +161,6 @@ if __name__ == '__main__':
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(LED_INTERCOM_GPIO, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(OPEN_BUTTON_GPIO, GPIO.OUT, initial=0)
-    creds = None
-
-
-
     
     GPIO.add_event_detect(LED_INTERCOM_GPIO, GPIO.BOTH, 
             callback=button_callback, bouncetime=100)
