@@ -3,8 +3,8 @@
 from datetime import datetime, timedelta
 import os.path
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request # type: ignore
+from google.oauth2.credentials import Credentials # type: ignore
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -34,6 +34,8 @@ logging.basicConfig(filename='calls.log',
                     level=logging.INFO,
                     encoding='utf-8',
                     format='[%(levelname)s] %(asctime)s: %(message)s')
+logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
+
 headersAuth = {
     'Authorization': 'Bearer '+ str(config['API_AUTH_TOKEN']),
 }
@@ -83,14 +85,18 @@ def botListening(msg):
    
             response = requests.get(API_URL+'/calls')
             data = response.json()
-            print (data)
+
             registro = ''
             for d in data['calls']:
                 registro+= d['date']+"\n"
+            print("🔔 Registro de llamadas:")
+            # print(data)
             print(registro)
+            
 
             try:
                 telegram_message("🔔 Registro de llamadas:\n"+ registro)
+
             except :
                 telegram_message("😣 Algo no ha salido como debía...")
                 print("❌ Error enviando registro")
@@ -148,7 +154,7 @@ def check_guests(timeMin, timeMax, maxResults):
             token.write(creds.to_json())
     
     try:
-        service = build("calendar", "v3", credentials=creds)
+        service = build("calendar", "v3", credentials=creds,cache_discovery=False)
         # Call the Calendar API
         
         events_result = (
