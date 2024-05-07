@@ -48,12 +48,11 @@ def botListening(msg):
         if(msg['text']=="/open"):
             open_door()
             
-        if(msg['text']=="/new_guest"):
-            telegram_message("🤷🏻‍♂️ not yet implemented")
+        if(msg['text']=="/test"):
+            telegram_message("🤷🏻‍♂️ nothing to test")
             # check_booking()
 
         if(msg['text']=="/upcoming_guests"):
-            # nextMonth = (datetime.now() + timedelta(days=60)).isoformat() + "Z"
             guests = check_guests(timeMin=datetime.utcnow().isoformat() + "Z",timeMax=None,maxResults=3)
             print(guests)
             if not guests:
@@ -90,7 +89,7 @@ def botListening(msg):
 
             registro = ''
             for d in data['calls']:
-                registro+= d['date']+"\n"
+                registro+= datetime.fromisoformat(d['date']).strftime('%d/%m/%Y %H:%M')+"\n"
             print("🔔 Registro de llamadas:")
             # print(data)
             print(registro)
@@ -138,10 +137,9 @@ def check_booking():
     checkoutDate = datetime.fromisoformat(guest.get('end').get('dateTime'))
     nowDate  = datetime.now(timezone.utc)
     
-    print(f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
-    telegram_message(f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
-    
     if(nowDate < checkoutDate):
+        print(f"{guest['location']} - {guest['summary']}:\n{datetime.fromisoformat(guest.get('start').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n{datetime.fromisoformat(guest.get('end').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n")
+        telegram_message(f"{guest['location']} - {guest['summary']}:\n{datetime.fromisoformat(guest.get('start').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n{datetime.fromisoformat(guest.get('end').get('dateTime')).strftime('%d/%m/%Y %H:%M')}")
         open_door()
         # print('open door')
     else:

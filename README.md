@@ -40,8 +40,8 @@ For a Raspberry Pi 4 B:
 
 ## Telegram Bot Commands
 open - 🔓open the door
+upcoming_guests - 📆 upcoming guests
 logs - ☑️ show logs
 calls - 🔔 show calls
-new_guest - 👋 new guest
-upcoming_guests - 📆 upcoming guests
+test - 🔧 test feature
 restart - 🔄 restart RasPi
