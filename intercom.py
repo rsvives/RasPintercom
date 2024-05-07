@@ -1,6 +1,6 @@
 #!/usr/bin/env python3          
 # import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os.path
 
 from google.auth.transport.requests import Request # type: ignore
@@ -21,10 +21,11 @@ import telepot
 from dotenv import dotenv_values
 config = dotenv_values(".env")
 
+
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 CALENDAR_ID="5797a4540d40657212fb1b300dd134c9231d8feb30ae8724760267c39171435c@group.calendar.google.com"
 NOW = datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
-creds = None
+
 
 OPEN_BUTTON_GPIO = 16
 LED_INTERCOM_GPIO = 6
@@ -49,11 +50,12 @@ def botListening(msg):
             
         if(msg['text']=="/new_guest"):
             telegram_message("🤷🏻‍♂️ not yet implemented")
+            # check_booking()
 
         if(msg['text']=="/upcoming_guests"):
 
             nextMonth = (datetime.now() + timedelta(days=7)).isoformat() + "Z"
-            guests = check_guests(timeMin=NOW,timeMax=nextMonth,maxResults=20)
+            guests = check_guests(timeMin=datetime.utcnow().isoformat() + "Z",timeMax=nextMonth,maxResults=None)
             if not guests:
                 print('🚫 No esperamos a nadie ahora')  
                 return
@@ -61,8 +63,8 @@ def botListening(msg):
             message=""
             print("📅 Próximos invitados:")
             for guest in guests:
-                data = (f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
-                print(data)
+                data = (f"{guest['location']} - {guest['summary']}:\n{datetime.fromisoformat(guest.get('start').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n{datetime.fromisoformat(guest.get('end').get('dateTime')).strftime('%d/%m/%Y %H:%M')}")
+                print(data+"\n")
                 message+=data+"\n\n"
 
             telegram_message("📅 Próximos invitados:\n\n"+message)    
@@ -126,17 +128,28 @@ def save_log():
 
 def check_booking():
     
-    guests = check_guests(timeMin=None,timeMax=NOW,maxResults=1)
+    guests = check_guests(timeMin=None,timeMax=datetime.utcnow().isoformat() + "Z",maxResults=None)
     if not guests:
-        print('🚫 No esperamos a nadie ahora')  
+        print('😵‍💫 Error al buscar invitados')  
+        telegram_message('😵‍💫 Error al buscar invitados')  
         return
-        
-    guest, *_ = guests
+    
+    *_,guest = guests
+    checkoutDate = datetime.fromisoformat(guest.get('end').get('dateTime'))
+    nowDate  = datetime.now(timezone.utc)
+    
     print(f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
-    open_door()
+    telegram_message(f"{guest['description']} - {guest['summary']}: {guest.get('start').get('dateTime')} -> {guest.get('end').get('dateTime')}")
+    
+    if(nowDate < checkoutDate):
+        open_door()
+        # print('open door')
+    else:
+        print('🚫 No esperamos a nadie ahora') 
+        telegram_message('🚫 No esperamos a nadie ahora')
     
 def check_guests(timeMin, timeMax, maxResults):
-
+    creds = None
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 
