@@ -36,7 +36,7 @@ This is a Raspberry Pi based Access Control System for 2 Wire Digital Intercoms
 For a Raspberry Pi 4 B:
 
 - GPIO 16: Relay switch
-- GPIO 26: LED observer
+- GPIO 6: LED observer
 
 ## Telegram Bot Commands
 
