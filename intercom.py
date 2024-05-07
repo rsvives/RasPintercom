@@ -53,9 +53,9 @@ def botListening(msg):
             # check_booking()
 
         if(msg['text']=="/upcoming_guests"):
-
-            nextMonth = (datetime.now() + timedelta(days=7)).isoformat() + "Z"
-            guests = check_guests(timeMin=datetime.utcnow().isoformat() + "Z",timeMax=nextMonth,maxResults=None)
+            # nextMonth = (datetime.now() + timedelta(days=60)).isoformat() + "Z"
+            guests = check_guests(timeMin=datetime.utcnow().isoformat() + "Z",timeMax=None,maxResults=3)
+            print(guests)
             if not guests:
                 print('🚫 No esperamos a nadie ahora')  
                 return
