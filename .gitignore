@@ -2,4 +2,7 @@
 calls.log
 .lgd-nfy0
 token.json
+credentials.json
 log
+service-intercom.json
+_token.json

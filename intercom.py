@@ -2,9 +2,11 @@
 # import os
 import datetime
 import os.path
+import json
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request # type: ignore
+from google.oauth2.credentials import Credentials # type: ignore
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -22,16 +24,20 @@ from dotenv import dotenv_values
 config = dotenv_values(".env")
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
-creds = None
+SERVICE_ACCOUNT_FILE='./service-intercom.json'
+CALENDAR_ID=config['CALENDAR_ID']
+NOW = datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
 
 OPEN_BUTTON_GPIO = 16
-LED_INTERCOM_GPIO = 6
+LED_INTERCOM_GPIO = 6 #6
 API_URL = config['API_URL']
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='calls.log', 
                     level=logging.INFO,
                     encoding='utf-8',
                     format='[%(levelname)s] %(asctime)s: %(message)s')
+logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.INFO)
+
 headersAuth = {
     'Authorization': 'Bearer '+ str(config['API_AUTH_TOKEN']),
 }
@@ -43,8 +49,10 @@ def botListening(msg):
         if(msg['text']=="/open"):
             open_door()
             
-        if(msg['text']=="/new_guest"):
-            telegram_message("🤷🏻‍♂️ not yet implemented")
+        if(msg['text']=="/test"):
+            telegram_message("🤷🏻‍♂️ nothing to test")
+            # check_booking()
+            # check_guests(timeMin=datetime.utcnow().isoformat() + "Z",timeMax=None,maxResults=3)
 
         if(msg['text']=="/upcoming_guests"):
             # telegram_message("🤷🏻‍♂️ not yet implemented")
@@ -98,28 +106,40 @@ def telegram_message(message):
 
 def save_log():
     data={'user': config['USER_ID']}
-    requests.post(API_URL+'/calls',json=data, headers=headersAuth)
-    print("📝 Guardando llamada en el registro")
-    logger.info("🔔 Llamada efectuada")
+    try:
+        requests.post(API_URL+'/calls',json=data, headers=headersAuth)
+        print("📝 Guardando llamada en el registro")
+        telegram_message("📝 Guardando llamada en el registro")
+        logger.info("🔔 Llamada efectuada")
+    except:
+        print("Error guardando datos en API")
+        telegram_message("Error guardando datos en API")
 
 
 def check_booking():
-
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-
-        # Save the credentials for the next run
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+    
+    guests = check_guests(timeMin=None,timeMax=datetime.utcnow().isoformat() + "Z",maxResults=None)
+    if not guests:
+        print('😵‍💫 Error al buscar invitados')  
+        telegram_message('😵‍💫 Error al buscar invitados')  
+        return
+    
+    *_,guest = guests
+    checkoutDate = datetime.fromisoformat(guest.get('end').get('dateTime'))
+    nowDate  = datetime.now(timezone.utc)
+    
+    if(nowDate < checkoutDate):
+        print(f"{guest['location']} - {guest['summary']}:\n{datetime.fromisoformat(guest.get('start').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n{datetime.fromisoformat(guest.get('end').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n")
+        telegram_message(f"{guest['location']} - {guest['summary']}:\n{datetime.fromisoformat(guest.get('start').get('dateTime')).strftime('%d/%m/%Y %H:%M')}\n{datetime.fromisoformat(guest.get('end').get('dateTime')).strftime('%d/%m/%Y %H:%M')}")
+        open_door()
+        # print('open door')
+    else:
+        print('🚫 No esperamos a nadie ahora') 
+        telegram_message('🚫 No esperamos a nadie ahora')
+    
+def check_guests(timeMin, timeMax, maxResults):
+    creds = service_account.Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     
     try:
         service = build("calendar", "v3", credentials=creds)
@@ -148,6 +168,7 @@ def check_booking():
 
     except HttpError as error:
         print(f"Error: {error}")
+        telegram_message(f"HTTP Error: {error.error_details}")
 
 def open_door():
     # time.sleep(1)
@@ -163,8 +184,8 @@ def button_callback(channel):
     if GPIO.input(LED_INTERCOM_GPIO):
         print("🔔 Han llamado!")
         telegram_message("🔔 Han llamado al portero automático!")
-        save_log()
         check_booking()
+        save_log()
     else:
         print("🔚 Se acabó la llamada!")
 
@@ -175,6 +196,9 @@ if __name__ == '__main__':
     
     GPIO.add_event_detect(LED_INTERCOM_GPIO, GPIO.BOTH, 
             callback=button_callback, bouncetime=100)
+    
+    print('✨ Inicializando Intercom')
+    telegram_message('✨ Inicializando Intercom')
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.pause()
