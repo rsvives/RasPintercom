@@ -41,9 +41,9 @@ For a Raspberry Pi 4 B:
 - GPIO 26: LED observer
 
 ## Telegram Bot Commands
-open - 🔓open the door
-logs - ☑️ show logs
-calls - 🔔 show calls
-new_guest - 👋 new guest
-upcoming_guests - 📆 upcoming guests
-restart - 🔄 restart RasPi
+- open - 🔓open the door
+- logs - ☑️ show logs
+- calls - 🔔 show calls
+- new_guest - 👋 new guest
+- upcoming_guests - 📆 upcoming guests
+- restart - 🔄 restart RasPi
